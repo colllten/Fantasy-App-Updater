@@ -7,6 +7,7 @@ import org.json.JSONObject;
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
 import java.net.URL;
+import java.util.ArrayList;
 
 public class Player {
     int id;
@@ -38,9 +39,9 @@ public class Player {
                 ("/Users/coltenglover/Java Projects/FantasyApp/src/main/resources/Rosters.txt"))) {
             //Iterate through every college
             for (College team : College.colleges) {
-                String schoolName = team.getSchool().replace(" ", "_");
+                String schoolName = team.getSchool(); //Name of school to be changed to url version
                 String jsonData = getCollegeRoster(schoolName);
-                if (jsonData.equals("[]")) { //Some schools have no roster data
+                if (jsonData.equals("[]")) { //Some schools have no roster data, replace the spaces with %20
                     continue;
                 }
                 //Write roster info so I don't have to call API every time
@@ -49,64 +50,75 @@ public class Player {
                 //Iterate over every player and add them to the team's roaster ArrayList
                 for (int i = 0; i < players.length(); i++) {
                     count++;
-                    int id;
-                    String firstName;
-                    String lastName;
-                    String college;
-                    int jersey;
-                    int year;
-                    String position;
-                    JSONObject player = players.getJSONObject(i);
-
-                    try {
-                        id = Integer.parseInt(player.get("id").toString());
-                    } catch (NumberFormatException e) {
-                        id = -1;
-                    }
-
-                    try {
-                        firstName = player.get("first_name").toString();
-                    } catch (JSONException e) {
-                        firstName = "null";
-                    }
-
-                    try {
-                        lastName = player.get("last_name").toString();
-                    } catch (JSONException e) {
-                        lastName = "null";
-                    }
-
-                    try {
-                        college = player.get("team").toString();
-                    } catch (JSONException e) {
-                        college = "null";
-                    }
-
-                    try {
-                        jersey = Integer.parseInt(player.get("jersey").toString());
-                    } catch (NumberFormatException e) {
-                        jersey = -1;
-                    }
-
-                    try {
-                        year = Integer.parseInt(player.get("year").toString());
-                    } catch (NumberFormatException e) {
-                        year = -1;
-                    }
-
-                    try {
-                        position = player.get("position").toString();
-                    } catch (JSONException e) {
-                        position = "null";
-                    }
-
-                    team.roster.add(new Player(id, firstName, lastName, college, jersey, year, position));
+                    team.roster.add(parsePlayer(players.getJSONObject(i)));
                 }
             }
         } catch (IOException e) {
             System.out.println("Error writing players to DB");
+        } catch (RuntimeException e) {
+
         }
         System.out.printf("Added %d players to the DB\n", count);
+        filterOffenseOnly();
+    }
+
+
+    /***
+     * Parses a JSONObject into a Player Object
+     * @param player - JSON data containing player info
+     * @return - Player with fields completed
+     */
+    private static Player parsePlayer(JSONObject player) {
+        int id;
+        String firstName;
+        String lastName;
+        String college;
+        int jersey;
+        int year;
+        String position;
+
+        try {
+            id = Integer.parseInt(player.get("id").toString());
+        } catch (NumberFormatException e) {
+            id = -1;
+        }
+
+        try {
+            firstName = player.get("first_name").toString();
+        } catch (JSONException e) {
+            firstName = "null";
+        }
+
+        try {
+            lastName = player.get("last_name").toString();
+        } catch (JSONException e) {
+            lastName = "null";
+        }
+
+        try {
+            college = player.get("team").toString();
+        } catch (JSONException e) {
+            college = "null";
+        }
+
+        try {
+            jersey = Integer.parseInt(player.get("jersey").toString());
+        } catch (NumberFormatException e) {
+            jersey = -1;
+        }
+
+        try {
+            year = Integer.parseInt(player.get("year").toString());
+        } catch (NumberFormatException e) {
+            year = -1;
+        }
+
+        try {
+            position = player.get("position").toString();
+        } catch (JSONException e) {
+            position = "null";
+        }
+        return new Player(id, firstName, lastName, college, jersey, year, position);
     }
 
     /***
@@ -115,9 +127,16 @@ public class Player {
      * @return - JSON string
      */
     private static String getCollegeRoster(String collegeName) {
+        //TODO: Change year to 2022
+        if (collegeName.equals("San José State")) {
+            collegeName = "San%20Jos%C3%A9%20State";
+        } else if (collegeName.equals("Texas A&M")) {
+            collegeName = "Texas%20A%26M";
+        } else {
+            collegeName = collegeName.replace(" ", "%20");
+        }
         //Append college name
         String url = "https://api.collegefootballdata.com/roster?team=" + collegeName + "&year=2021";
-        System.out.println("Fetching roster data for " + collegeName + " from CFDB");
         StringBuilder input = new StringBuilder();
         try {
             URL myUrl = new URL(url);
@@ -136,5 +155,87 @@ public class Player {
             throw new RuntimeException(e);
         }
         return input.toString();
+    }
+
+    /***
+     * Instead of calling CFDB everytime, I have written all teams and their rosters to their respective txt files,
+     * so I can read from those and fill ArrayLists and search through data
+     */
+    public static void fillOfflineRosters() {
+        try (BufferedReader br = new BufferedReader(new FileReader
+                ("/Users/coltenglover/Java Projects/FantasyApp/src/main/resources/Rosters.txt"))) {
+            //Each line in the file is associated with a team
+            String line = br.readLine();
+            int count = 0;
+            while (line != null) {
+                JSONArray players = new JSONArray(line);
+                for (int i = 0; i < players.length(); i++) {
+                    Player player = parsePlayer(players.getJSONObject(i));
+                    for (College college : College.colleges) {
+                        if (college.school.equalsIgnoreCase(player.team)) {
+                            college.roster.add(player);
+                            count++;
+                            break;
+                        }
+                    }
+                }
+                line = br.readLine();
+            }
+            System.out.printf("We have %d players in the DB\n", count);
+            filterOffenseOnly();
+        } catch (IOException e) {
+            System.out.println("Error");
+        }
+    }
+
+    /***
+     * Removes every defensive player from the roster of every team because they are not needed in
+     * fantasy games
+     */
+    private static void filterOffenseOnly() {
+        int count = 0;
+        for (College college : College.colleges) {
+            ArrayList<Player> players = new ArrayList<>();
+            for (Player player : college.roster) {
+                if (!player.position.equals("DB") && !player.position.equals("LB") && !player.position.equals("DL")
+                        && !player.position.equals("CB") && !player.position.equals("OL") && !player.position.equals("G")
+                        && !player.position.equals("C") && !player.position.equals("P") && !player.position.equals("DT")
+                        && !player.position.equals("OT") && !player.position.equals("S") && !player.position.equals("LS")
+                        && !player.position.equals("NT") && !player.position.equals("DE")) {
+                    count++;
+                    players.add(player);
+                }
+            }
+            college.roster = players;
+        }
+        System.out.printf("After filtering offense only, there are %d in the DB\n", count);
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public String getTeam() {
+        return team;
+    }
+
+    public int getJersey() {
+        return jersey;
+    }
+
+    public int getYear() {
+        return year;
     }
 }

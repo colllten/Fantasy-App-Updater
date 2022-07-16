@@ -15,7 +15,7 @@ public class College {
     String abbrv;
     String conference;
 
-    ArrayList<Player> roster = new ArrayList<>();
+    public ArrayList<Player> roster = new ArrayList<>();
     public static ArrayList<College> colleges = new ArrayList<>(120); //There are at least 130 colleges
 
     public College(int id, String school, String mascot, String abbrv, String conference) {
@@ -40,9 +40,8 @@ public class College {
 
             //Create Colleges to stick into the ArrayList
             for (int i = 0; i < teamsArray.length(); i++) {
-                //Driver.pb.step();
                 JSONObject team = teamsArray.getJSONObject(i);
-                colleges.add(new College(1, team.getString("school"), team.getString("mascot"),
+                colleges.add(new College(team.getInt("id"), team.getString("school"), team.getString("mascot"),
                         team.getString("abbreviation"), team.getString("conference")));
             }
             br.close();
