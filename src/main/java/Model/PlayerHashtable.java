@@ -57,6 +57,17 @@ public class PlayerHashtable {
         return result;
     }
 
+    public Player search(String id) {
+        for (ArrayList<Player> player : players) {
+            for (int j = 0; j < player.size(); j++) {
+                if (player.get(j).id == Integer.parseInt(id)) {
+                    return player.get(j);
+                }
+            }
+        }
+        return null;
+    }
+
     /***
      * Removes specified player
      * @param firstName - Player's first name

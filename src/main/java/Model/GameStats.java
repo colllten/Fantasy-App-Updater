@@ -43,4 +43,14 @@ public class GameStats {
     public GameStats() {
 
     }
+
+    public void updateXPStats(String stat) {
+        this.extraPointMakes = Integer.parseInt(stat.substring(0, stat.indexOf("/")));
+        this.extraPointAttempts = Integer.parseInt(stat.substring(stat.indexOf("/") + 1));
+    }
+
+    public void updateFGStats(String stat) {
+        this.fieldGoalMakes = Integer.parseInt(stat.substring(0, stat.indexOf("/")));
+        this.fieldGoalAttempts = Integer.parseInt(stat.substring(stat.indexOf("/") + 1));
+    }
 }

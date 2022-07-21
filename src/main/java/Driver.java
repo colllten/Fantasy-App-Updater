@@ -325,39 +325,70 @@ public class Driver {
                 }
                 //Teams involved in matchup
                 JSONArray teams = safeMatchup.getJSONArray("teams");
-                //First team in array
-                JSONObject team = teams.getJSONObject(0);
-                if (!updatedTeams.contains(team.getString("school"))) { //If the school isn't in the set...
-                    updatedTeams.add(team.getString("school"));
-                    //Categories array
-                    JSONArray categories = team.getJSONArray("categories");
-                    //All kicking stats
-                    JSONObject kicking = categories.getJSONObject(1);
-                    //Types of kicking stats
-                    JSONArray kickingTypes = kicking.getJSONArray("types");
-                    //PTS
-                    JSONObject extraPoints = kickingTypes.getJSONObject(1);
-                    JSONArray athletes = extraPoints.getJSONArray("athletes");
-                    if (athletes.length() == 0) {
-                        continue;
-                    }
-                    for (int j = 0; j < athletes.length(); j++) {
-                        JSONObject athlete = athletes.getJSONObject(j);
-                        String firstName = athlete.getString("name").substring(0, athlete.getString("name").indexOf(" "));
-                        String lastName = athlete.getString("name").substring(athlete.getString("name").indexOf(" ") + 1);
-                        ArrayList<Player> players = Player.playerTable.search(firstName, lastName);
-                        for (int k = 0; k < players.size(); k++) {
-                            if (players.get(k).getTeam().equals(team.getString("school"))) {
-                                players.get(k).playerGameStats.get(i).week = i;
-                                players.get(k).playerGameStats.get(i).year = 2021;
-                                try {
-                                    players.get(k).playerGameStats.get(i).extraPointMakes = Integer.parseInt
-                                            (athlete.getString("stat").substring(0, athlete.getString("stat").indexOf("/")));
-                                    players.get(k).playerGameStats.get(i).extraPointAttempts = Integer.parseInt
-                                            (athlete.getString("stat").substring(athlete.getString("stat").indexOf("/") + 1));
-                                } catch (StringIndexOutOfBoundsException ignored) {}
-                                Player.playerTable.put(players.get(k));
-                                break;
+                for (int j = 0; j < teams.length(); j++) {
+                    //Team Stats
+                    JSONObject team = teams.getJSONObject(j);
+                    if (!updatedTeams.contains(team.getString("school"))) { //If the school isn't in the set...
+                        updatedTeams.add(team.getString("school"));
+                        //Categories array
+                        JSONArray categories = team.getJSONArray("categories");
+                        for (int k = 0; k < categories.length(); k++) {
+                            JSONObject category = categories.getJSONObject(k);
+                            JSONArray types = category.getJSONArray("types");
+                            JSONArray athletes;
+                            Player player;
+                            switch (category.getString("name")) {
+                                //Types of the stat
+                                case ("kicking"):
+                                    for (int kickingType = 0; kickingType < types.length(); kickingType++) {
+                                        JSONObject kickingStat = types.getJSONObject(kickingType);
+                                        player = null;
+                                        switch (kickingStat.getString("name")) {
+                                            case ("XP"):
+                                                athletes = kickingStat.getJSONArray("athletes");
+                                                for (int athleteIndex = 0; athleteIndex < athletes.length(); athleteIndex++) {
+                                                    JSONObject athlete = athletes.getJSONObject(athleteIndex);
+                                                    player = Player.playerTable.search(athlete.getString("id"));
+                                                    if (player == null) {
+                                                        continue;
+                                                    }
+                                                    player.playerGameStats.get(i).updateXPStats(athlete.getString("stat"));
+                                                    Player.playerTable.put(player);
+                                                }
+                                                break;
+                                            case ("FG"):
+                                                athletes = kickingStat.getJSONArray("athletes");
+                                                for (int athleteIndex = 0; athleteIndex < athletes.length(); athleteIndex++) {
+                                                    JSONObject athlete = athletes.getJSONObject(athleteIndex);
+                                                    player = Player.playerTable.search(athlete.getString("id"));
+                                                    if (player == null) {
+                                                        continue;
+                                                    }
+                                                    player.playerGameStats.get(i).updateFGStats(athlete.getString("stat"));
+                                                    Player.playerTable.put(player);
+                                                    if (player.playerGameStats.get(i).fieldGoalMakes > 0) {
+                                                        System.out.printf("%s %s (%s) made %d FGs\n", player.getFirstName(), player.getLastName(), player.getTeam(), player.playerGameStats.get(i).fieldGoalMakes);
+                                                    }
+                                                }
+                                                break;
+                                        }
+                                    }
+                                    break;
+                                case ("kickReturns"):
+
+                                    break;
+                                case ("fumbles"):
+
+                                    break;
+                                case ("receiving"):
+
+                                    break;
+                                case ("rushing"):
+
+                                    break;
+                                case ("passing"):
+
+                                    break;
                             }
                         }
                     }
