@@ -52,6 +52,20 @@ public class College {
         }
     }
 
+    /***
+     * Change college name so that it can be passed as parameter for API call
+     * @param collegeName - name of college
+     * @return - altered name of college
+     */
+    public static String urlSafeName(String collegeName) {
+        String result = collegeName;
+        result = result.replace(" ", "%20");
+        result = result.replace("é", "%C3%A9");
+        result = result.replace("&", "%26");
+
+        return result;
+    }
+
     public int getId() {
         return id;
     }

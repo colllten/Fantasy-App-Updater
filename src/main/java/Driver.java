@@ -1,5 +1,6 @@
 import Model.College;
 import Model.Player;
+import Model.PlayerHashtable;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
@@ -14,6 +15,9 @@ import com.google.auth.oauth2.GoogleCredentials;
 
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class Driver {
 
@@ -22,7 +26,8 @@ public class Driver {
     public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
 
         FileInputStream serviceAccount =
-                new FileInputStream("/Users/coltenglover/Java Projects/FantasyApp/src/main/resources/college-fantasy-football-firebase-adminsdk-z6oe2-06d23889ee.json");
+                new FileInputStream("/Users/coltenglover/Java Projects/FantasyApp/src/main/resources/college" +
+                        "-fantasy-football-firebase-adminsdk-z6oe2-06d23889ee.json");
 
         FirebaseOptions options = new FirebaseOptions.Builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))
@@ -54,13 +59,19 @@ public class Driver {
         Scanner in = new Scanner(System.in);
         String response = "";
         //Menu for Java database
-        System.out.println("Update local storage or local storage?\n1) CFDB\n2) Local Storage");
+        System.out.println("1) Update all teams and players' stats through week #\n2) Update from CFDB\n3) Use local storage");
         if (in.nextLine().equals("1")) {
-            getFBSTeams();
-            Player.getPlayers();
+            getFBSTeams(); //Pull from CFDB and write info to files
+            Player.getPlayers(); //Pull all rosters and put into files
+            System.out.println("Enter what week you would like to update through");
+            updateWeekStats(Integer.parseInt(in.nextLine()));
+        } else if (in.nextLine().equals("2")) {
+            getFBSTeams(); //Pull from CFDB and write info to files
+            Player.getPlayers(); //Pull all rosters and put into files
         } else {
-            College.fillCollegeList();
-            Player.fillOfflineRosters();
+            College.fillCollegeList(); //Read from file and fill college list
+            Player.fillOfflineRosters(); // Read from file and fill all college rosters
+            System.out.printf("There are %d players in the hashtable\n", Player.playerTable.playerCount);
         }
         do {
             System.out.print("" +
@@ -190,11 +201,10 @@ public class Driver {
      * @return - The JSON string from CFDB
      */
     public static String readData(String httpsURL) {
-        System.out.println("Fetching data from CFDB");
         StringBuilder input = new StringBuilder();
         try {
             URL myUrl = new URL(httpsURL);
-            HttpsURLConnection conn = (HttpsURLConnection)myUrl.openConnection();
+            HttpsURLConnection conn = (HttpsURLConnection) myUrl.openConnection();
             conn.setRequestProperty("Authorization", Constants.API_KEY);
             conn.setRequestMethod("GET");
             InputStream is = conn.getInputStream();
@@ -267,6 +277,7 @@ public class Driver {
         ProgressBar pb = new ProgressBar("Writing teams to Firestore", College.colleges.size());
         pb.start();
         for (College college : College.colleges) {
+            //By now, every college has their roster finished and can now be written to the DB
             db.collection("Colleges").add(college);
             pb.step();
         }
@@ -282,5 +293,77 @@ public class Driver {
 //        docData.put("roster", players);
 //        docData.put("school", "indiana university");
 //        ApiFuture<DocumentReference> future = db.collection("Colleges").add(docData);
+    }
+
+    /***
+     * Goes through every college and searches that week's game and fills their roster's stats
+     * @param weekNum
+     */
+    public static void updateWeekStats(int weekNum) {
+        System.out.printf("There are %d players in hashtable BEFORE updating stats\n", Player.playerTable.playerCount);
+        for (int i = 1; i <= weekNum; i++) {
+            //Track what teams have been updated
+            Set<String> updatedTeams = new HashSet<>();
+            for (College college : College.colleges) {
+                String collegeName = college.getSchool();
+                //Turn into url-safe college name
+                collegeName = College.urlSafeName(collegeName);
+                //Pull from API
+                String url = "https://api.collegefootballdata.com/games/players?year=2021&week=" + i
+                        + "&seasonType=regular&team=" + collegeName;
+                //General array
+                JSONArray jsonData = new JSONArray(readData(url));
+                //game ID + teams
+                JSONObject safeMatchup = null;
+                try {
+                    safeMatchup = jsonData.getJSONObject(0);
+                } catch (JSONException ignored) {
+
+                }
+                if (safeMatchup == null) {
+                    continue;
+                }
+                //Teams involved in matchup
+                JSONArray teams = safeMatchup.getJSONArray("teams");
+                //First team in array
+                JSONObject team = teams.getJSONObject(0);
+                if (!updatedTeams.contains(team.getString("school"))) { //If the school isn't in the set...
+                    updatedTeams.add(team.getString("school"));
+                    //Categories array
+                    JSONArray categories = team.getJSONArray("categories");
+                    //All kicking stats
+                    JSONObject kicking = categories.getJSONObject(1);
+                    //Types of kicking stats
+                    JSONArray kickingTypes = kicking.getJSONArray("types");
+                    //PTS
+                    JSONObject extraPoints = kickingTypes.getJSONObject(1);
+                    JSONArray athletes = extraPoints.getJSONArray("athletes");
+                    if (athletes.length() == 0) {
+                        continue;
+                    }
+                    for (int j = 0; j < athletes.length(); j++) {
+                        JSONObject athlete = athletes.getJSONObject(j);
+                        String firstName = athlete.getString("name").substring(0, athlete.getString("name").indexOf(" "));
+                        String lastName = athlete.getString("name").substring(athlete.getString("name").indexOf(" ") + 1);
+                        ArrayList<Player> players = Player.playerTable.search(firstName, lastName);
+                        for (int k = 0; k < players.size(); k++) {
+                            if (players.get(k).getTeam().equals(team.getString("school"))) {
+                                players.get(k).playerGameStats.get(i).week = i;
+                                players.get(k).playerGameStats.get(i).year = 2021;
+                                try {
+                                    players.get(k).playerGameStats.get(i).extraPointMakes = Integer.parseInt
+                                            (athlete.getString("stat").substring(0, athlete.getString("stat").indexOf("/")));
+                                    players.get(k).playerGameStats.get(i).extraPointAttempts = Integer.parseInt
+                                            (athlete.getString("stat").substring(athlete.getString("stat").indexOf("/") + 1));
+                                } catch (StringIndexOutOfBoundsException ignored) {}
+                                Player.playerTable.put(players.get(k));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        System.out.printf("After updating stats, there are %d players in hashtable\n", Player.playerTable.playerCount);
     }
 }

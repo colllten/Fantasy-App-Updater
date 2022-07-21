@@ -18,7 +18,11 @@ public class Player {
     int year;
     String position;
 
+    public ArrayList<GameStats> playerGameStats;
+
     private static final String API_KEY = "Bearer VTB63JmasppqSnWzLNjrK+duDxjYwrSGWoo2a4z+HQjzkUeUg5cPpPNNPVz0uw6L";
+
+    public static PlayerHashtable playerTable = new PlayerHashtable(7151);
 
     public Player(int id, String firstName, String lastName, String team, int jersey, int year, String position) {
         this.id = id;
@@ -28,6 +32,10 @@ public class Player {
         this.jersey = jersey;
         this.year = year;
         this.position = position;
+        this.playerGameStats = new ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            playerGameStats.add(new GameStats(2021, i));
+        }
     }
 
     /***
@@ -40,7 +48,7 @@ public class Player {
             //Iterate through every college
             for (College team : College.colleges) {
                 String schoolName = team.getSchool(); //Name of school to be changed to url version
-                String jsonData = getCollegeRoster(schoolName);
+                String jsonData = getCollegeRoster(schoolName); //Pull from CFDB
                 if (jsonData.equals("[]")) { //Some schools have no roster data, replace the spaces with %20
                     continue;
                 }
@@ -59,7 +67,7 @@ public class Player {
 
         }
         System.out.printf("Added %d players to the DB\n", count);
-        filterOffenseOnly();
+        filterOffenseOnly(); //Take out all defensive players
     }
 
 
@@ -118,7 +126,9 @@ public class Player {
         } catch (JSONException e) {
             position = "null";
         }
-        return new Player(id, firstName, lastName, college, jersey, year, position);
+
+        Player player1 = new Player(id, firstName, lastName, college, jersey, year, position);
+        return player1;
     }
 
     /***
@@ -128,15 +138,13 @@ public class Player {
      */
     private static String getCollegeRoster(String collegeName) {
         //TODO: Change year to 2022
-        if (collegeName.equals("San José State")) {
-            collegeName = "San%20Jos%C3%A9%20State";
-        } else if (collegeName.equals("Texas A&M")) {
-            collegeName = "Texas%20A%26M";
-        } else {
-            collegeName = collegeName.replace(" ", "%20");
-        }
-        //Append college name
+
+        //Replace all troublesome characters
+        collegeName = College.urlSafeName(collegeName);
+
+        //Final url to make API call
         String url = "https://api.collegefootballdata.com/roster?team=" + collegeName + "&year=2021";
+
         StringBuilder input = new StringBuilder();
         try {
             URL myUrl = new URL(url);
@@ -169,8 +177,12 @@ public class Player {
             int count = 0;
             while (line != null) {
                 JSONArray players = new JSONArray(line);
+
+                //Iterate through all players in a given team
                 for (int i = 0; i < players.length(); i++) {
+                    //Make Player object to add into the college roster
                     Player player = parsePlayer(players.getJSONObject(i));
+                    //Iterate through all colleges to find where this player belongs
                     for (College college : College.colleges) {
                         if (college.school.equalsIgnoreCase(player.team)) {
                             college.roster.add(player);
@@ -182,7 +194,7 @@ public class Player {
                 line = br.readLine();
             }
             System.out.printf("We have %d players in the DB\n", count);
-            filterOffenseOnly();
+            filterOffenseOnly(); //Filter out all defensive players
         } catch (IOException e) {
             System.out.println("Error");
         }
@@ -194,7 +206,9 @@ public class Player {
      */
     private static void filterOffenseOnly() {
         int count = 0;
+        //Go through every college rosters
         for (College college : College.colleges) {
+            //List for all offensive players
             ArrayList<Player> players = new ArrayList<>();
             for (Player player : college.roster) {
                 if (!player.position.equals("DB") && !player.position.equals("LB") && !player.position.equals("DL")
@@ -204,8 +218,10 @@ public class Player {
                         && !player.position.equals("NT") && !player.position.equals("DE")) {
                     count++;
                     players.add(player);
+                    Player.playerTable.put(player);
                 }
             }
+            //Reset the college roster
             college.roster = players;
         }
         System.out.printf("After filtering offense only, there are %d in the DB\n", count);
@@ -237,5 +253,9 @@ public class Player {
 
     public int getYear() {
         return year;
+    }
+
+    public String toString() {
+        return String.format("%s %s | %s | %d | %s", this.firstName, this.lastName, this.position, this.jersey, this.team);
     }
 }
