@@ -24,7 +24,6 @@ public class Driver {
     static ProgressBar pb = new ProgressBar("Updating Firestore Database", 100);
 
     public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
-
         FileInputStream serviceAccount =
                 new FileInputStream("/Users/coltenglover/Java Projects/FantasyApp/src/main/resources/college" +
                         "-fantasy-football-firebase-adminsdk-z6oe2-06d23889ee.json");
@@ -61,8 +60,10 @@ public class Driver {
         //Menu for Java database
         System.out.println("1) Update all teams and players' stats through week #\n2) Update from CFDB\n3) Use local storage");
         if (in.nextLine().equals("1")) {
-            getFBSTeams(); //Pull from CFDB and write info to files
-            Player.getPlayers(); //Pull all rosters and put into files
+            getFBSTeams();
+            Player.fillOfflineRosters();
+//            getFBSTeams(); //Pull from CFDB and write info to files
+//            Player.getPlayers(); //Pull all rosters and put into files
             System.out.println("Enter what week you would like to update through");
             updateWeekStats(Integer.parseInt(in.nextLine()));
         } else if (in.nextLine().equals("2")) {
@@ -366,19 +367,48 @@ public class Driver {
                                                     }
                                                     player.playerGameStats.get(i).updateFGStats(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
-                                                    if (player.playerGameStats.get(i).fieldGoalMakes > 0) {
-                                                        System.out.printf("%s %s (%s) made %d FGs\n", player.getFirstName(), player.getLastName(), player.getTeam(), player.playerGameStats.get(i).fieldGoalMakes);
-                                                    }
                                                 }
                                                 break;
                                         }
                                     }
                                     break;
                                 case ("kickReturns"):
-
+                                    for (int krTypeIndex = 0; krTypeIndex < types.length(); krTypeIndex++) {
+                                        JSONObject krType = types.getJSONObject(krTypeIndex);
+                                        switch (krType.getString("name")) {
+                                            case ("TD"):
+                                                athletes = krType.getJSONArray("athletes");
+                                                player = null;
+                                                for (int athleteIndex = 0; athleteIndex < athletes.length(); athleteIndex++) {
+                                                    JSONObject athlete = athletes.getJSONObject(athleteIndex);
+                                                    player = Player.playerTable.search(athlete.getString("id"));
+                                                    if (player == null) {
+                                                        continue;
+                                                    }
+                                                    player.playerGameStats.get(i).returnTDs =
+                                                            Integer.parseInt(athlete.getString("stat"));
+                                                    Player.playerTable.put(player);
+                                                }
+                                                break;
+                                            case ("YDS"):
+                                                athletes = krType.getJSONArray("athletes");
+                                                player = null;
+                                                for (int athleteIndex = 0; athleteIndex < athletes.length(); athleteIndex++) {
+                                                    JSONObject athlete = athletes.getJSONObject(athleteIndex);
+                                                    player = Player.playerTable.search(athlete.getString("id"));
+                                                    if (player == null) {
+                                                        continue;
+                                                    }
+                                                    player.playerGameStats.get(i).returnYards =
+                                                            Integer.parseInt(athlete.getString("stat"));
+                                                    Player.playerTable.put(player);
+                                                }
+                                                break;
+                                        }
+                                    }
                                     break;
                                 case ("fumbles"):
-
+                                    
                                     break;
                                 case ("receiving"):
 
