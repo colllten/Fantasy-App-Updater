@@ -37,25 +37,6 @@ public class Driver {
 
         Firestore db = FirestoreClient.getFirestore();
 
-////        DocumentReference docRef = db.collection("Colleges").document("3MiyQtDJjpltAa7xrUUk");
-////// asynchronously retrieve the document
-////        ApiFuture<DocumentSnapshot> future = docRef.get();
-////        DocumentSnapshot document = future.get();
-////        System.out.println(document.getString("school"));
-//
-//
-//        // Create a reference to the cities collection
-//        CollectionReference cities = db.collection("Colleges");
-//// Create a query against the collection.
-//        Query query = cities.whereEqualTo("school", "Purdue");
-//// retrieve  query results asynchronously using query.get()
-//        ApiFuture<QuerySnapshot> querySnapshot = query.get();
-//
-//        for (DocumentSnapshot document : querySnapshot.get().getDocuments()) {
-//            System.out.println(document.getString("mascot"));
-//        }
-
-
         Scanner in = new Scanner(System.in);
         String response = "";
         //Menu for Java database
