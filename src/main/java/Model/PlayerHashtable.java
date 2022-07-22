@@ -4,7 +4,7 @@ import java.awt.*;
 import java.util.ArrayList;
 
 public class PlayerHashtable {
-    ArrayList<ArrayList<Player>> players;
+    public ArrayList<ArrayList<Player>> players;
     private int capacity;
     public int playerCount;
 

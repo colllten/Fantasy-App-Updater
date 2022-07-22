@@ -5,6 +5,7 @@ import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
 import me.tongfei.progressbar.ProgressBar;
+
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
 import java.net.URL;
@@ -66,6 +67,8 @@ public class Driver {
 //            Player.getPlayers(); //Pull all rosters and put into files
             System.out.println("Enter what week you would like to update through");
             updateWeekStats(Integer.parseInt(in.nextLine()));
+            writePlayersToFirestore(db);
+
         } else if (in.nextLine().equals("2")) {
             getFBSTeams(); //Pull from CFDB and write info to files
             Player.getPlayers(); //Pull all rosters and put into files
@@ -296,12 +299,38 @@ public class Driver {
 //        ApiFuture<DocumentReference> future = db.collection("Colleges").add(docData);
     }
 
+    private static void deletePlayersFromFirestore(Firestore db) {
+        for (int i = 0; i < Player.playerTable.players.size(); i++) {
+            for (int j = 0; j < Player.playerTable.players.get(i).size(); j++) {
+                //db.collection("Players").add(Player.playerTable.players.get(i).get(j));
+                db.collection("Players").document(String.valueOf(Player.playerTable.players.get(i).get(j)
+                        .getId())).delete();
+            }
+        }
+    }
+
+    public static void writePlayersToFirestore(Firestore db) {
+        deletePlayersFromFirestore(db);
+        ProgressBar pb = new ProgressBar("Writing teams to Firestore", Player.playerTable.playerCount);
+        pb.start();
+        for (int i = 0; i < Player.playerTable.players.size(); i++) {
+            if (!Player.playerTable.players.get(i).isEmpty()) {
+                for (int j = 0; j < Player.playerTable.players.get(i).size(); j++) {
+                    //db.collection("Players").add(Player.playerTable.players.get(i).get(j));
+                    db.collection("Players").document(String.valueOf(Player.playerTable.players.get(i).get(j)
+                            .getId())).set(Player.playerTable.players.get(i).get(j));
+                    pb.step();
+                }
+            }
+        }
+        pb.stop();
+    }
+
     /***
      * Goes through every college and searches that week's game and fills their roster's stats
      * @param weekNum
      */
     public static void updateWeekStats(int weekNum) {
-        System.out.printf("There are %d players in hashtable BEFORE updating stats\n", Player.playerTable.playerCount);
         for (int i = 1; i <= weekNum; i++) {
             //Track what teams have been updated
             Set<String> updatedTeams = new HashSet<>();
@@ -353,7 +382,7 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).updateXPStats(athlete.getString("stat"));
+                                                    player.playerGameStats.get(i - 1).updateXPStats(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
                                                 break;
@@ -365,7 +394,7 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).updateFGStats(athlete.getString("stat"));
+                                                    player.playerGameStats.get(i - 1).updateFGStats(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
                                                 break;
@@ -385,7 +414,7 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).returnTDs =
+                                                    player.playerGameStats.get(i - 1).returnTDs =
                                                             Integer.parseInt(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
@@ -399,7 +428,7 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).returnYards =
+                                                    player.playerGameStats.get(i - 1).returnYards =
                                                             Integer.parseInt(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
@@ -418,10 +447,9 @@ public class Driver {
                                                 if (player == null) {
                                                     continue;
                                                 }
-                                                player.playerGameStats.get(i).fumbles =
+                                                player.playerGameStats.get(i - 1).fumbles =
                                                         Integer.parseInt(athlete.getString("stat"));
                                                 Player.playerTable.put(player);
-                                                //System.out.printf("%s %s (%s) had %d fumbles\n", player.getFirstName(), player.getLastName(), player.getTeam(), player.playerGameStats.get(i).fumbles);
                                             }
                                         }
                                     }
@@ -439,7 +467,7 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).receivingTDs =
+                                                    player.playerGameStats.get(i - 1).receivingTDs =
                                                             Integer.parseInt(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
@@ -452,12 +480,12 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).receivingYards =
+                                                    player.playerGameStats.get(i - 1).receivingYards =
                                                             Integer.parseInt(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
                                                 break;
-                                            case ("REC") :
+                                            case ("REC"):
                                                 athletes = recStat.getJSONArray("athletes");
                                                 for (int athleteIndex = 0; athleteIndex < athletes.length(); athleteIndex++) {
                                                     JSONObject athlete = athletes.getJSONObject(athleteIndex);
@@ -465,14 +493,11 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).receptions =
+                                                    player.playerGameStats.get(i - 1).receptions =
                                                             Integer.parseInt(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
-                                                    if (player.playerGameStats.get(i).receptions > 4) {
-                                                        System.out.printf("%s %s (%s) had %d receptions\n", player.getFirstName(), player.getLastName(), player.getTeam(), player.playerGameStats.get(i).receptions);
-                                                    }
                                                     break;
-                                            }
+                                                }
                                         }
                                     }
                                     break;
@@ -488,7 +513,7 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).rushingTDs =
+                                                    player.playerGameStats.get(i - 1).rushingTDs =
                                                             Integer.parseInt(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
@@ -501,7 +526,7 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).rushingYards =
+                                                    player.playerGameStats.get(i - 1).rushingYards =
                                                             Integer.parseInt(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
@@ -514,7 +539,7 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).rushingAttempts =
+                                                    player.playerGameStats.get(i - 1).rushingAttempts =
                                                             Integer.parseInt(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
@@ -534,7 +559,7 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).interceptions =
+                                                    player.playerGameStats.get(i - 1).interceptions =
                                                             Integer.parseInt(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
@@ -547,7 +572,7 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).passingTDs =
+                                                    player.playerGameStats.get(i - 1).passingTDs =
                                                             Integer.parseInt(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
@@ -560,7 +585,7 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).passingYards =
+                                                    player.playerGameStats.get(i - 1).passingYards =
                                                             Integer.parseInt(athlete.getString("stat"));
                                                     Player.playerTable.put(player);
                                                 }
@@ -573,11 +598,10 @@ public class Driver {
                                                     if (player == null) {
                                                         continue;
                                                     }
-                                                    player.playerGameStats.get(i).passingCompletions =
+                                                    player.playerGameStats.get(i - 1).passingCompletions =
                                                             Integer.parseInt(athlete.getString("stat").substring(0, athlete.getString("stat").indexOf("/")));
-                                                    player.playerGameStats.get(i).passingAttempts = Integer.parseInt(athlete.getString("stat").substring(athlete.getString("stat").indexOf("/") + 1));
+                                                    player.playerGameStats.get(i - 1).passingAttempts = Integer.parseInt(athlete.getString("stat").substring(athlete.getString("stat").indexOf("/") + 1));
                                                     Player.playerTable.put(player);
-                                                    //System.out.printf("%s %s (%s) went %d/%d\n", player.getFirstName(), player.getLastName(), player.getTeam(), player.playerGameStats.get(i).passingCompletions, player.playerGameStats.get(i).passingAttempts);
                                                 }
                                                 break;
                                         }
