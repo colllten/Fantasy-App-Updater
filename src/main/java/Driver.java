@@ -267,23 +267,11 @@ public class Driver {
             pb.step();
         }
         pb.stop();
-
-//        Map<String, Object> docData = new HashMap<>();
-//        docData.put("abbrv", "iu");
-//        docData.put("conference", "Big Ten");
-//        docData.put("mascot", "Hoosiers");
-//        ArrayList<Player> players = new ArrayList<>();
-//        Map<String, Object> p1 = new HashMap<>();
-//        players.add(new Player(1, "C", "G", "indiana university", 1, 3, "WR"));
-//        docData.put("roster", players);
-//        docData.put("school", "indiana university");
-//        ApiFuture<DocumentReference> future = db.collection("Colleges").add(docData);
     }
 
     private static void deletePlayersFromFirestore(Firestore db) {
         for (int i = 0; i < Player.playerTable.players.size(); i++) {
             for (int j = 0; j < Player.playerTable.players.get(i).size(); j++) {
-                //db.collection("Players").add(Player.playerTable.players.get(i).get(j));
                 db.collection("Players").document(String.valueOf(Player.playerTable.players.get(i).get(j)
                         .getId())).delete();
             }
