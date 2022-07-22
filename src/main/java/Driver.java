@@ -408,10 +408,73 @@ public class Driver {
                                     }
                                     break;
                                 case ("fumbles"):
-
+                                    for (int fumbleStatIndex = 0; fumbleStatIndex < types.length(); fumbleStatIndex++) {
+                                        JSONObject fumbleStat = types.getJSONObject(fumbleStatIndex);
+                                        if (fumbleStat.getString("name").equals("FUM")) {
+                                            athletes = fumbleStat.getJSONArray("athletes");
+                                            for (int athleteIndex = 0; athleteIndex < athletes.length(); athleteIndex++) {
+                                                JSONObject athlete = athletes.getJSONObject(athleteIndex);
+                                                player = Player.playerTable.search(athlete.getString("id"));
+                                                if (player == null) {
+                                                    continue;
+                                                }
+                                                player.playerGameStats.get(i).fumbles =
+                                                        Integer.parseInt(athlete.getString("stat"));
+                                                Player.playerTable.put(player);
+                                                //System.out.printf("%s %s (%s) had %d fumbles\n", player.getFirstName(), player.getLastName(), player.getTeam(), player.playerGameStats.get(i).fumbles);
+                                            }
+                                        }
+                                    }
                                     break;
                                 case ("receiving"):
-
+                                    for (int recStatIndex = 0; recStatIndex < types.length(); recStatIndex++) {
+                                        //Iterate through all types of receiving stats
+                                        JSONObject recStat = types.getJSONObject(recStatIndex);
+                                        switch (recStat.getString("name")) {
+                                            case ("TD"):
+                                                athletes = recStat.getJSONArray("athletes");
+                                                for (int athleteIndex = 0; athleteIndex < athletes.length(); athleteIndex++) {
+                                                    JSONObject athlete = athletes.getJSONObject(athleteIndex);
+                                                    player = Player.playerTable.search(athlete.getString("id"));
+                                                    if (player == null) {
+                                                        continue;
+                                                    }
+                                                    player.playerGameStats.get(i).receivingTDs =
+                                                            Integer.parseInt(athlete.getString("stat"));
+                                                    Player.playerTable.put(player);
+                                                }
+                                                break;
+                                            case ("YDS"):
+                                                athletes = recStat.getJSONArray("athletes");
+                                                for (int athleteIndex = 0; athleteIndex < athletes.length(); athleteIndex++) {
+                                                    JSONObject athlete = athletes.getJSONObject(athleteIndex);
+                                                    player = Player.playerTable.search(athlete.getString("id"));
+                                                    if (player == null) {
+                                                        continue;
+                                                    }
+                                                    player.playerGameStats.get(i).receivingYards =
+                                                            Integer.parseInt(athlete.getString("stat"));
+                                                    Player.playerTable.put(player);
+                                                }
+                                                break;
+                                            case ("REC") :
+                                                athletes = recStat.getJSONArray("athletes");
+                                                for (int athleteIndex = 0; athleteIndex < athletes.length(); athleteIndex++) {
+                                                    JSONObject athlete = athletes.getJSONObject(athleteIndex);
+                                                    player = Player.playerTable.search(athlete.getString("id"));
+                                                    if (player == null) {
+                                                        continue;
+                                                    }
+                                                    player.playerGameStats.get(i).receptions =
+                                                            Integer.parseInt(athlete.getString("stat"));
+                                                    Player.playerTable.put(player);
+                                                    if (player.playerGameStats.get(i).receptions > 4) {
+                                                        System.out.printf("%s %s (%s) had %d receptions\n", player.getFirstName(), player.getLastName(), player.getTeam(), player.playerGameStats.get(i).receptions);
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                    }
                                     break;
                                 case ("rushing"):
 
